@@ -1,19 +1,20 @@
-import React, { createContext, useCallback, useState } from 'react';
+import React, { createContext, useCallback, useState, useContext } from 'react';
 import api from '../services/api';
 
 interface AuthState {
     token: string;
     user: object;
-  }
+}
 
-  interface SignInCredentials {
+interface SignInCredentials {
     email: string;
     password: string;
-  }
+}
 
 interface AuthContextData {
     user: object;
     signIn(credentials: SignInCredentials): Promise<void>;
+    singOut(): void;
 }
 
 const AuthContext = createContext<AuthContextData>({} as AuthContextData);
@@ -33,7 +34,7 @@ const AuthProvider: React.FC = ({ children }) => {
     const signIn = useCallback(async ({ email, password }) => {
         const response = await api.post('sessions', {
             email,
-            password
+            password,
         });
 
         const { token , user } = response.data;
@@ -44,11 +45,28 @@ const AuthProvider: React.FC = ({ children }) => {
         setData({ token, user });
     }, []);
 
+    const singOut = useCallback(() => {
+        localStorage.removeItem('@GoBarber:token');
+        localStorage.removeItem('@GoBarber:user');
+
+        setData({} as AuthState);
+    }, [])
+
     return(
-        <AuthContext.Provider value={{ user: data.user, signIn }}>
+        <AuthContext.Provider value={{ user: data.user, signIn, singOut }}>
             {children}
         </AuthContext.Provider>
     );
 };
 
-export { AuthContext, AuthProvider };
+function useAuth(): AuthContextData {
+    const context = useContext(AuthContext)
+
+    if (!context) {
+        throw new Error('precisa usar o AuthProvider')
+    }
+
+    return context;
+}
+
+export { AuthProvider, useAuth };
